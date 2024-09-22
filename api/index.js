@@ -1,11 +1,12 @@
-//index.js
 const express = require("express");
 const bodyParser = require("body-parser");
+const cors = require("cors");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(bodyParser.json({ limit: '10mb' })); // Increase limit for large files
+app.use(cors()); // Enable CORS
+app.use(bodyParser.json({ limit: '10mb' }));
 
 app.post("/bfhl", (req, res) => {
     const { data, file_b64 } = req.body;
@@ -18,10 +19,13 @@ app.post("/bfhl", (req, res) => {
     // Process the data
     const numbers = data.filter(item => !isNaN(item));
     const alphabets = data.filter(item => isNaN(item));
-    const highestLowercaseAlphabet = alphabets
-        .filter(item => item.toLowerCase() === item)
-        .sort()
-        .slice(-1);
+    
+    // Handle highest lowercase alphabet
+    let highestLowercaseAlphabet = null;
+    const lowercaseAlphabets = alphabets.filter(item => item === item.toLowerCase());
+    if (lowercaseAlphabets.length > 0) {
+        highestLowercaseAlphabet = lowercaseAlphabets.sort().slice(-1)[0]; // Get the highest one
+    }
 
     // Handle file_b64 validity
     let file_valid = false;
@@ -29,10 +33,12 @@ app.post("/bfhl", (req, res) => {
     let file_size_kb = 0;
 
     if (file_b64) {
-        // Assuming file_b64 is valid for demo purposes
-        file_valid = true; // Set this based on actual validation
-        file_mime_type = "image/png"; // Determine based on file content
-        file_size_kb = Buffer.byteLength(file_b64, 'base64') / 1024; // Size in KB
+        const parts = file_b64.split(",");
+        if (parts.length > 1) {
+            file_valid = true; // Assume valid for demo purposes
+            file_mime_type = parts[0].match(/:(.*?);/)[1];
+            file_size_kb = Buffer.byteLength(parts[1], 'base64') / 1024; // Size in KB
+        }
     }
 
     return res.json({
@@ -42,7 +48,7 @@ app.post("/bfhl", (req, res) => {
         roll_number: "ABCD123",
         numbers,
         alphabets,
-        highest_lowercase_alphabet,
+        highest_lowercase_alphabet: highestLowercaseAlphabet, // Return the highest lowercase alphabet
         file_valid,
         file_mime_type,
         file_size_kb
